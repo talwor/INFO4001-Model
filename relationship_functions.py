@@ -17,11 +17,12 @@ def find_eligible_partners(G, person_id, max_age_gap=5):
             continue #heterosexual mixing
         if abs(attrs['age'] - person_age) > max_age_gap:
             continue #enforce age gap limit
+        if G.degree(candidate_id) > 0:
+            continue #monogamous relationships
         eligible.append(candidate_id)
     return eligible
 
-def start_relationship(G, formation_probability, homophily, current_step, transmission_probability,
-                       min_age):
+def start_relationship(G, formation_probability, homophily, current_step, min_age):
     """
     for each person, with probability formation_probability,
     attempt to form a new sexual partnership:
@@ -33,17 +34,8 @@ def start_relationship(G, formation_probability, homophily, current_step, transm
         if G.nodes[person_id]['age'] < min_age: #only 16 or older
             continue
 
-        if G.degree(person_id) >= 1:  #monogamy
+        if G.degree(person_id) > 0:  #monogamy
             continue
-
-        if random.random() < formation_probability:
-            # only consider candidates with no partners
-            candidates = [
-                p for p in find_eligible_partners(G, person_id)
-                if G.degree(p) == 0
-            ]
-            if not candidates:
-                continue
 
         #form relationship
         if random.random() < formation_probability:
@@ -65,21 +57,15 @@ def start_relationship(G, formation_probability, homophily, current_step, transm
             G.add_edge(person_id,chosen_partner,formed_step=current_step) #relationship formed
             G.graph['num_relationships_formed'] +=1
 
-            #infecting, currently by chance.
-            for a, b in ((person_id, chosen_partner), (chosen_partner, person_id)):
-                if G.nodes[a]['infection_status'] == 'I' and G.nodes[b]['infection_status'] == 'S': 
-                    if random.random() < transmission_probability:
-                        G.nodes[b]['infection_status'] = 'I'
-                        G.graph['total_infections'] +=1
-                        G.nodes[b]['infection_step'] = current_step
-
            
 def breakup(G, breakup_probability=0.01):
     """
     Each existing partnership has a chance to dissolve
-    at each time step.
+    at each time step. 
+
+    - currently 1% of breaking up
     """
-    for u, v in list(G.edges()):
+    for person1, person2 in list(G.edges()):
         if random.random() < breakup_probability:
-            G.remove_edge(u, v)
+            G.remove_edge(person1, person2)
             G.graph['num_breakups'] +=1
