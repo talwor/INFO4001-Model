@@ -6,7 +6,9 @@ import random
 
 import matplotlib.pyplot as plt
 
-infected_counts = [20]
+infected_hiv_counts = [20]
+infected_flu_counts = [20]
+
 
 """
 Simulation in code below
@@ -71,7 +73,7 @@ if __name__ == "__main__":
 
 
     # 3. Simulate network growth over time
-    total_steps = 728  # 104 weeks, 2 years
+    total_steps = 730  # 730 days, 104 weeks, 2 years
     for step in range(total_steps):
         relationship.start_relationship(
             population,
@@ -80,10 +82,20 @@ if __name__ == "__main__":
             step, #current step
             16 #min_age
         )
-        disease.progress_flu(population,
-                             step)
-        disease.transmit_flu(population,
-                             step)
+        disease.progress_flu(
+        population,
+        step,
+        incubation_period=4,
+        infectious_period=7
+        )
+        disease.transmit_flu(
+            population,
+            step,
+            edge_beta=0.15,
+            hiv_multiplier=2.0,
+            community_contacts=5,
+            community_beta=0.05
+        )
         disease.transmit_hiv(
             population,
             transmission_probability_mtf=1/1234, #based on research 1/1234
@@ -98,10 +110,15 @@ if __name__ == "__main__":
             population,
             step
         )
+        
+        #matplot lib
+        count_hiv = sum(1 for _, attrs in population.nodes(data=True)
+        if attrs["hiv_infection_status"] == "I")
+        infected_hiv_counts.append(count_hiv)
 
-        count = sum(1 for _, attrs in population.nodes(data=True)
-                if attrs["hiv_infection_status"] == "I")
-        infected_counts.append(count)
+        count_flu = sum(1 for _, attrs in population.nodes(data=True)
+        if attrs["flu_infection_status"] == "I")
+        infected_flu_counts.append(count_flu)
 
     count_hiv = 0 
     for person_id, attrs in population.nodes(data=True):
@@ -155,21 +172,33 @@ if __name__ == "__main__":
     print(list(population.edges(data=True))[:5]) 
 
     print("\ntotal num flu infections at end: "+ str(population.graph['flu_total_infections']))
-    print("total hiv recovered by the end: " + str(count_flu))
+    print("total flu recovered by the end: " + str(count_flu))
 
     nx.write_graphml(population, "bourke_hiv_influenza_final.graphml")
 
 
 
     weeks = list(range(0, total_steps+1))
+    #HIV
     plt.figure(figsize=(8,4))
-    plt.plot(weeks, infected_counts, marker='o')
-    plt.xlabel("Week")
+    plt.plot(weeks, infected_hiv_counts, marker='o')
+    plt.xlabel("Day")
     plt.ylabel("Number of HIV-infected individuals")
     plt.title("HIV Prevalence over Time in Bourke Simulation")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
+    #FLU
+    plt.figure(figsize=(8,4))
+    plt.plot(weeks, infected_flu_counts, marker='o')
+    plt.xlabel("Day")
+    plt.ylabel("Number of Flu-infected individuals (I)")
+    plt.title("Influenza Prevalence over Time in Bourke Simulation")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 
 
     # now `population` holds  dynamic sexual-contact network,

@@ -39,7 +39,8 @@ def generate_population(population_size, age_distribution, male_fraction, indige
                    hiv_infection_status="S", #S for susceptible, I for infected, R for recovered
                    hiv_infection_step=0, #infection_step = when the infection occurs
                    flu_infection_status="S",
-                   flu_infection_step=0) 
+                   flu_infection_step=0,
+                   flu_recovered_step=0) 
         
     adult_nodes = [
     node_id

@@ -1,6 +1,11 @@
 import random
 
-def transmit_hiv(G, transmission_probability_ftm,transmission_probability_mtf, current_step): #currently only hiv
+def transmit_hiv(
+    G, 
+    transmission_probability_ftm,
+    transmission_probability_mtf, 
+    current_step
+    ): 
     """
     For every partnership formed at `current_step`,
     attempt transmission from infected → susceptible.
@@ -29,11 +34,11 @@ def transmit_hiv(G, transmission_probability_ftm,transmission_probability_mtf, c
 def transmit_flu(
     G,
     current_step,
-    edge_beta=0.15,          # per-step flu transmission prob along a close/household-like edge
-    hiv_multiplier=2.0,      # >1 increases risk for HIV+ susceptibles
-    community_contacts=3,    # casual contacts per infectious person per step (well-mixed)
-    community_beta=0.05      # per-contact prob for casual (non-edge) encounters
-):
+    edge_beta,          # per-step flu transmission prob along a someone in a relationship
+    hiv_multiplier,      # >1 increases risk for HIV+ susceptibles
+    community_contacts,    # casual contacts per infectious person per step (well-mixed)
+    community_beta  # per-contact prob for casual (non-edge) encounters. 5%
+    ):     
     """
     Influenza transmission for this time step.
 
@@ -41,9 +46,7 @@ def transmit_flu(
     - Adds 'community mixing' so flu can jump outside the sexual-contact edges.
     - Susceptible people living with HIV ('hiv_infection_status' == 'I') have higher
       infection probability via `hiv_multiplier`.
-    - Assumes node fields:
-        G.nodes[i]['flu_status'] in {'S','E','I','R'}   (default 'S' if missing)
-        G.nodes[i]['hiv_infection_status'] in {'S','I'} (existing in your model)
+
       On infection, we set:
         G.nodes[i]['flu_status'] = 'E'   (exposed; incubating)
         G.nodes[i]['flu_infection_step'] = current_step
@@ -103,23 +106,46 @@ def transmit_flu(
                     newly_infected.add(tgt)
 
     # --- apply infections -----------------------------------------------------
-    for n in newly_infected:
-        infect(n)
+    for person in newly_infected:
+        infect(person)
 
 
-def progress_flu(G, current_step, inc_period=1, inf_period=4):
+def progress_flu(
+    G, 
+    current_step, 
+    incubation_period=4, 
+    infectious_period=7,
+    immunity_days = 180
+    ):
     """
-    E -> I after inc_period steps; I -> R after inf_period steps (from becoming I).
+    E is incubation, I is infected (E for exposed)
+    E -> I after incubation_period steps; 
+    I -> R after infectious_period steps (from becoming I).
     """
-    for n, attrs in G.nodes(data=True):
-        status = attrs.get('flu_status', 'S')
+    for person, attrs in G.nodes(data=True):
+        status = attrs.get('flu_infection_status', 'S')
         t_inf = attrs.get('flu_infection_step')
 
-        if status == 'E' and t_inf is not None and current_step - t_inf >= inc_period:
-            G.nodes[n]['flu_status'] = 'I'
-            G.nodes[n]['flu_became_infectious_step'] = current_step
+        if status == 'E' and t_inf is not None and current_step - t_inf >= incubation_period:
+            G.nodes[person]['flu_infection_status'] = 'I'
+            G.nodes[person]['flu_became_infectious_step'] = current_step
 
         elif status == 'I':
             t_I = attrs.get('flu_became_infectious_step', t_inf)
-            if t_I is not None and current_step - t_I >= inf_period:
-                G.nodes[n]['flu_status'] = 'R'
+            if t_I is not None and (current_step - t_I) >= infectious_period:
+                G.nodes[person]['flu_infection_status'] = 'R'
+                G.nodes[person]['flu_recovered_step']   = current_step
+                # heterogeneous waning (mean 180d, sd 30d; clamp to >=30)
+                w = max(30, int(random.gauss(immunity_days, 30)))
+                G.nodes[person]['flu_waning_days'] = w
+
+        
+        # Recovered -> Susceptible (waning immunity)
+        elif status == 'R':
+            t_R = attrs.get('flu_recovered_step')
+            if t_R is not None and current_step - t_R >= immunity_days:
+                G.nodes[person]['flu_infection_status'] = 'S'
+                # clear timestamps to allow reinfection
+                G.nodes[person]['flu_infection_step'] = 0
+                G.nodes[person]['flu_became_infectious_step'] = 0
+                G.nodes[person]['flu_recovered_step'] = current_step

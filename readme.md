@@ -8,3 +8,5 @@ source venv/bin/activate
 pip install networkx
 """ for mac
 
+
+currently assume
