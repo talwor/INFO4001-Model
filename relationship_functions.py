@@ -1,6 +1,6 @@
 import random
 
-def find_eligible_partners(G, person_id, max_age_gap=5):
+def find_eligible_partners(G, person_id, max_age_gap=10):
     """
     returns a list of node IDs that:
       - are not the same person

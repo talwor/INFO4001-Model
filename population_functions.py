@@ -22,6 +22,7 @@ def generate_population(population_size, age_distribution, male_fraction, indige
       - age
       - gender ('M' or 'F')
       - is_indigenous (True/False)
+      etc.
     """
     G = nx.Graph()
     G.graph["num_relationships_formed"] = 0
@@ -78,7 +79,7 @@ def sample_age(brackets):
 
 
 # constants
-RECOVERY_DAYS = 60  # change to ceil(60/7) if your timestep is a WEEK
+RECOVERY_DAYS = 180  #change to ceil(60/7) if timestep is a WEEK
 
 def apply_recovery(G, current_day, status_key="hiv_infection_status",
                    inf_step_key="hiv_infection_step", rec_step_key="hiv_recovery_step",

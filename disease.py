@@ -54,7 +54,7 @@ def transmit_flu(
     """
     # --- helpers --------------------------------------------------------------
     def is_infectious(node_id):
-        # Only 'I' shed flu; adjust if you later add presymptomatic infectiousness
+        # Only 'I' shed flu
         return G.nodes[node_id].get('flu_infection_status', 'S') == 'I'
 
     def is_susceptible(node_id):
@@ -68,7 +68,7 @@ def transmit_flu(
         G.nodes[node_id]['flu_infection_step'] = current_step
         G.graph['flu_total_infections'] = G.graph.get('flu_total_infections', 0) + 1
 
-    # To avoid multiple infections or double-processing, collect infections then apply once
+    # avoid multiple infections or double-processing, collect infections then apply once
     newly_infected = set()
 
     # --- 1) Transmission along edges (close/household-like contacts) ----------
@@ -85,14 +85,13 @@ def transmit_flu(
                 newly_infected.add(person1)
 
     # --- 2) Community mixing (casual contacts beyond the network edges) -------
-    # Build quick lists for speed
     infectious = [n for n, d in G.nodes(data=True) if is_infectious(n)]
     susceptibles = [n for n, d in G.nodes(data=True) if is_susceptible(n)]
 
     # If no susceptibles remain, skip
     if susceptibles:
         for src in infectious:
-            # Sample casual contacts without replacement, excluding self
+            #sample casual contacts without replacement, excluding self
             # (could bias by age, location, etc. later)
             pool = [x for x in susceptibles if x != src and x not in newly_infected]
             if not pool:

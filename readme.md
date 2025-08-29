@@ -1,5 +1,6 @@
 pip install networkx
 pip install matplotlib
+pip install random
 
 
 """"
@@ -9,4 +10,4 @@ pip install networkx
 """ for mac
 
 
-currently assume
+TO BE UPDATED.

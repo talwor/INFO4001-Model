@@ -72,21 +72,21 @@ if __name__ == "__main__":
 
 
 
-    # 3. Simulate network growth over time
-    total_steps = 730  # 730 days, 104 weeks, 2 years
+    # 3.simulate network growth over time
+    total_steps = 365  # 730 days, 104 weeks, 2 years #at 365 for 1 year for nice graph
     for step in range(total_steps):
+        disease.progress_flu(
+            population,
+            step,
+            incubation_period=4,
+            infectious_period=7
+        )
         relationship.start_relationship(
             population,
             0.01, #formation_probability
             0.7, #homophily
             step, #current step
             16 #min_age
-        )
-        disease.progress_flu(
-        population,
-        step,
-        incubation_period=4,
-        infectious_period=7
         )
         disease.transmit_flu(
             population,
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         ) 
         relationship.breakup(
             population,
-            breakup_probability=0.01 #0.001
+            breakup_probability=0.01 
         )
         pop.apply_recovery(
             population,
@@ -120,6 +120,7 @@ if __name__ == "__main__":
         if attrs["flu_infection_status"] == "I")
         infected_flu_counts.append(count_flu)
 
+        
     count_hiv = 0 
     for person_id, attrs in population.nodes(data=True):
         if attrs["hiv_infection_status"] == "I":
@@ -169,10 +170,13 @@ if __name__ == "__main__":
     print("total num hiv infections at end: "+ str(population.graph['hiv_total_infections']))
     print("total hiv recovered by the end: " + str(count_hiv))
     print("nodes:", population.number_of_nodes(), "edges:", population.number_of_edges())
-    print(list(population.edges(data=True))[:5]) 
 
     print("\ntotal num flu infections at end: "+ str(population.graph['flu_total_infections']))
     print("total flu recovered by the end: " + str(count_flu))
+
+    print("SKIBIBIBID")
+    print(str(max(infected_flu_counts)))
+    
 
     nx.write_graphml(population, "bourke_hiv_influenza_final.graphml")
 
@@ -181,7 +185,7 @@ if __name__ == "__main__":
     weeks = list(range(0, total_steps+1))
     #HIV
     plt.figure(figsize=(8,4))
-    plt.plot(weeks, infected_hiv_counts, marker='o')
+    plt.plot(weeks, infected_hiv_counts, linestyle='-')
     plt.xlabel("Day")
     plt.ylabel("Number of HIV-infected individuals")
     plt.title("HIV Prevalence over Time in Bourke Simulation")
@@ -191,7 +195,7 @@ if __name__ == "__main__":
 
     #FLU
     plt.figure(figsize=(8,4))
-    plt.plot(weeks, infected_flu_counts, marker='o')
+    plt.plot(weeks, infected_flu_counts, linestyle='-')
     plt.xlabel("Day")
     plt.ylabel("Number of Flu-infected individuals (I)")
     plt.title("Influenza Prevalence over Time in Bourke Simulation")
@@ -200,6 +204,3 @@ if __name__ == "__main__":
     plt.show()
 
 
-
-    # now `population` holds  dynamic sexual-contact network,
-    # with edges stamped by 'formed_step' when they appeared.
