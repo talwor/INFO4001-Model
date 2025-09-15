@@ -1,6 +1,6 @@
 import random
 
-def find_eligible_partners(G, person_id, max_age_gap=10):
+def find_eligible_partners(G, person_id,max_degree=10, max_age_gap=10):
     """
     returns a list of node IDs that:
       - are not the same person
@@ -12,17 +12,18 @@ def find_eligible_partners(G, person_id, max_age_gap=10):
     eligible = []
     for candidate_id, attrs in G.nodes(data=True):
         if candidate_id == person_id:
-            continue #not the same person allowed
+            continue
         if attrs['gender'] == person_gender:
-            continue #heterosexual mixing
+            continue
         if abs(attrs['age'] - person_age) > max_age_gap:
-            continue #enforce age gap limit
-        if G.degree(candidate_id) > 0:
-            continue #monogamous relationships
+            continue
+        # allow multiple partners; cap if max_degree is set
+        if max_degree is not None and G.degree(candidate_id) >= max_degree:
+            continue
         eligible.append(candidate_id)
     return eligible
 
-def start_relationship(G, formation_probability, homophily, current_step, min_age):
+def start_relationship(G, formation_probability, homophily, current_step, min_age, max_degree):
     """
     for each person, with probability formation_probability,
     attempt to form a new sexual partnership:
@@ -31,32 +32,27 @@ def start_relationship(G, formation_probability, homophily, current_step, min_ag
       - record edge attribute 'formed_step'
     """
     for person_id in list(G.nodes):
-        if G.nodes[person_id]['age'] < min_age: #only 16 or older
+        if G.nodes[person_id]['age'] < min_age:
+            continue
+        # allow multiple partners; cap if max_degree is set
+        if max_degree is not None and G.degree(person_id) >= max_degree:
             continue
 
-        if G.degree(person_id) > 0:  #monogamy
-            continue
-
-        #form relationship
         if random.random() < formation_probability:
-            partners = find_eligible_partners(G, person_id)
+            partners = find_eligible_partners(G, person_id, max_age_gap=10, max_degree=max_degree)
             if not partners:
                 continue
-            #compute weights for homophily on indigenous status
             weights = []
             for partner_id in partners:
-                same_status = (G.nodes[person_id]['is_indigenous'] ==
-                               G.nodes[partner_id]['is_indigenous'])
-                weights.append(homophily if same_status else (1 - homophily))
-            total_weight = sum(weights)
-            probabilities = [w / total_weight for w in weights]
-            chosen_partner = random.choices(partners, probabilities)[0]
-
-            if G.has_edge(person_id, chosen_partner):
-                continue #prevent duplicate edges
-            G.add_edge(person_id,chosen_partner,formed_step=current_step) #relationship formed
-            G.graph['num_relationships_formed'] +=1
-
+                same = (G.nodes[person_id]['is_indigenous'] == G.nodes[partner_id]['is_indigenous'])
+                weights.append(homophily if same else (1 - homophily))
+            total = sum(weights)
+            probs = [w/total for w in weights]
+            chosen = random.choices(partners, probs)[0]
+            # if G.has_edge(person_id, chosen):
+            #     continue
+            G.add_edge(person_id, chosen, formed_step=current_step)
+            G.graph['num_relationships_formed'] += 1
            
 def breakup(G, breakup_probability=0.01):
     """

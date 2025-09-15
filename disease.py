@@ -18,6 +18,7 @@ def transmit_hiv(
                 and G.nodes[b]['hiv_infection_status'] == 'S'):
                 if random.random() < transmission_probability_ftm:
                     G.nodes[b]['hiv_infection_status'] = 'I'
+                    G.nodes[b]["hiv_ever_infected"] = True
                     G.nodes[b]['hiv_infection_step'] = current_step
                     G.graph['hiv_total_infections'] += 1
 
@@ -25,6 +26,7 @@ def transmit_hiv(
                 and G.nodes[b]['hiv_infection_status'] == 'S'):
                 if random.random() < transmission_probability_mtf:
                     G.nodes[b]['hiv_infection_status'] = 'I'
+                    G.nodes[b]["hiv_ever_infected"] = True
                     G.nodes[b]['hiv_infection_step'] = current_step
                     G.graph['hiv_total_infections'] += 1
 
@@ -48,7 +50,7 @@ def transmit_flu(
       infection probability via `hiv_multiplier`.
 
       On infection, we set:
-        G.nodes[i]['flu_status'] = 'E'   (exposed; incubating)
+        G.nodes[i]['flu_infection_status'] = 'E'   (exposed; incubating)
         G.nodes[i]['flu_infection_step'] = current_step
         G.graph['flu_total_infections'] (counter; created if missing)
     """
@@ -66,6 +68,8 @@ def transmit_flu(
     def infect(node_id):
         G.nodes[node_id]['flu_infection_status'] = 'E'  # enter incubation; your progression will move E->I->R
         G.nodes[node_id]['flu_infection_step'] = current_step
+        G.nodes[node_id]["flu_ever_infected"] = True
+
         G.graph['flu_total_infections'] = G.graph.get('flu_total_infections', 0) + 1
 
     # avoid multiple infections or double-processing, collect infections then apply once
@@ -89,24 +93,37 @@ def transmit_flu(
     susceptibles = [n for n, d in G.nodes(data=True) if is_susceptible(n)]
 
     # If no susceptibles remain, skip
-    if susceptibles:
-        for src in infectious:
-            #sample casual contacts without replacement, excluding self
-            # (could bias by age, location, etc. later)
-            pool = [x for x in susceptibles if x != src and x not in newly_infected]
-            if not pool:
-                continue
-            k = min(community_contacts, len(pool))
-            # random.sample requires k <= len(pool)
-            contacts = random.sample(pool, k=k)
-            for tgt in contacts:
-                p = community_beta * hiv_multiplier_for(tgt)
-                if random.random() < p:
-                    newly_infected.add(tgt)
+    if susceptibles:  # only run if there are any susceptibles left
+        for infector in infectious:
+            # Build a pool of susceptible contacts (excluding the infector and those already infected this step)
+            possible_contacts = [
+                person for person in susceptibles
+                if person != infector and person not in newly_infected
+            ]
+            if not possible_contacts:
+                continue  # no one left to infect
+
+            # Number of casual encounters this infectious person will have this step
+            num_contacts = min(community_contacts, len(possible_contacts))
+            
+            # Randomly pick that many contacts from the pool
+            chosen_contacts = random.sample(possible_contacts, k=num_contacts)
+
+            for contact in chosen_contacts:
+                # Adjust transmission probability if contact is HIV-positive
+                transmission_prob = community_beta * hiv_multiplier_for(contact)
+                
+                # Infect with probability 'transmission_prob'
+                if random.random() < transmission_prob:
+                    newly_infected.add(contact)
+                                
+
 
     # --- apply infections -----------------------------------------------------
     for person in newly_infected:
         infect(person)
+    
+    return len(newly_infected)  #cumulative incidence
 
 
 def progress_flu(

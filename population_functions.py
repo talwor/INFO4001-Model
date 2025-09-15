@@ -39,9 +39,11 @@ def generate_population(population_size, age_distribution, male_fraction, indige
                    is_indigenous=is_indigenous,
                    hiv_infection_status="S", #S for susceptible, I for infected, R for recovered
                    hiv_infection_step=0, #infection_step = when the infection occurs
+                   hiv_ever_infected=False,
                    flu_infection_status="S",
                    flu_infection_step=0,
-                   flu_recovered_step=0) 
+                   flu_recovered_step=0,
+                   flu_ever_infected=False) 
         
     adult_nodes = [
     node_id
@@ -61,6 +63,8 @@ def generate_population(population_size, age_distribution, male_fraction, indige
     for seed in flu_seed_ids:
         G.nodes[seed]['flu_infection_status'] = 'I'             # start infectious
         G.nodes[seed]['flu_infection_step'] = 0
+        G.nodes[seed]['flu_ever_infected'] = True        # <-- add
+        G.graph['flu_total_infections'] += 1             # <-- add
     return G
 
 
