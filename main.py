@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 infected_hiv_counts = [20]
 infected_flu_counts = [20]
 new_flu_cases_per_day = [] 
+new_hiv_cases_per_day = []
 
 # cumulative_flu_counts = []
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     print("num relationships at initialization (should be 0): "+ str(population.graph['num_relationships_formed']))
 
     # 3.simulate network growth over time
-    total_steps = 365  # 730 days, 104 weeks, 2 years #at 365 for 1 year for nice graph
+    total_steps = 730  # 730 days, 104 weeks, 2 years #at 365 for 1 year for nice graph
     for step in range(total_steps):
         disease.progress_flu(
             population,
@@ -80,13 +81,13 @@ if __name__ == "__main__":
         )
         relationship.start_relationship(
             population,
-            0.01, #formation_probability
+            0.1429, #forimation_probablity #intercourse once a week
             0.7, #homophily
             step, #current step
             16, #min_age
             None
         )
-        new_today = disease.transmit_flu(
+        flu_new_today = disease.transmit_flu(
             population,
             step,
             edge_beta=0.15,
@@ -94,17 +95,19 @@ if __name__ == "__main__":
             community_contacts=5,
             community_beta=0.1
         )
-        new_flu_cases_per_day.append(new_today)  
+        new_flu_cases_per_day.append(flu_new_today)  
 
-        disease.transmit_hiv(
+        hiv_new_today = disease.transmit_hiv(
             population,
             transmission_probability_mtf=1/1234, #based on research 1/1234
             transmission_probability_ftm=1/2380, #1/2380
             current_step=step
         ) 
+        new_hiv_cases_per_day.append(hiv_new_today)  
+
         relationship.breakup(
             population,
-            breakup_probability=0.01 
+            breakup_probability=0.02
         )
         pop.apply_recovery(
             population,
@@ -173,9 +176,14 @@ if __name__ == "__main__":
     print("\ntotal num flu infections at end: "+ str(population.graph['flu_total_infections']))
     print("total flu recovered by the end: " + str(count_flu))
 
-    print("SKIBIBIBID")
-    print(str(max(infected_flu_counts)))
-    
+    print("===============")
+    # flu_ever_nodes = [n for n, d in population.nodes(data=True)
+    #                 if d.get("flu_ever_infected", False)]
+    # print("Nodes ever infected with flu:", flu_ever_nodes)
+
+
+
+
 
     out = f"bourke_hiv_influenza_final_{step}d.graphml"
 
@@ -204,6 +212,19 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
+    days = list(range(1, total_steps + 1))
+    cum_hiv_cases = np.cumsum(new_hiv_cases_per_day)
+
+    plt.figure(figsize=(9,4))
+    plt.plot(days, cum_hiv_cases, label="HIV Cumulative cases (count)")
+    plt.xlabel("Day")
+    plt.ylabel("People ever infected")
+    plt.title("Cumulative HIV incidence (Bourke model)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
     #FLU
     plt.figure(figsize=(8,4))
     plt.plot(weeks, infected_flu_counts, linestyle='-')
@@ -217,7 +238,6 @@ if __name__ == "__main__":
     # Build incidence & cumulative incidence vectors
     days = list(range(1, total_steps + 1))
     cum_flu_cases = np.cumsum(new_flu_cases_per_day)
-    cum_flu_per_1000 = (cum_flu_cases / population_size) * 1000
 
     # Plot daily new cases
     plt.figure(figsize=(9,4))
@@ -231,64 +251,11 @@ if __name__ == "__main__":
 
     # Plot cumulative incidence
     plt.figure(figsize=(9,4))
-    plt.plot(days, cum_flu_cases, label="Cumulative cases (count)")
-   
+    plt.plot(days, cum_flu_cases, label="Flu Cumulative cases (count)")
     plt.xlabel("Day")
     plt.ylabel("People ever infected")
     plt.title("Cumulative influenza incidence (Bourke model)")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.show()
-
-    fig, ax1 = plt.subplots(figsize=(9,4))
-
-    ax2 = ax1.twinx()
-    ax1.plot(days, new_flu_cases_per_day, color='tab:blue', label='Daily incidence')
-    ax2.plot(days, cum_flu_cases, color='tab:red', label='Cumulative incidence')
-
-    ax1.set_xlabel("Day")
-    ax1.set_ylabel("New cases per day", color='tab:blue')
-    ax2.set_ylabel("Cumulative cases", color='tab:red')
-    plt.title("Flu Daily vs Cumulative Incidence")
-
-
-
-    #     #FLU
-    # plt.figure(figsize=(8,4))
-    # plt.plot(weeks, cumulative_flu_counts, linestyle='-')
-    # plt.xlabel("Day")
-    # plt.ylabel("CUMULATIVE INCIDENCE (Prevalence)")
-    # plt.title("Influenza Cumulative Indicidence over Time in Bourke Simulation")
-    # plt.grid(True)
-    # plt.tight_layout()
-    # plt.show()
-
-    plt.figure(figsize=(9,4))
-    plt.plot(weeks, infected_hiv_counts, label="HIV: infected now")
-    plt.plot(weeks, infected_flu_counts, label="Flu: infected now")
-    plt.xlabel("Day")
-    plt.ylabel("People infected (prevalence)")
-    plt.title("Current infections over time (Bourke model)")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig("prevalence_counts.png", dpi=200)
-    plt.show()
-
-    hiv_pct = [100*x/2340 for x in infected_hiv_counts]
-    flu_pct = [100*x/2340 for x in infected_flu_counts]
-
-    print(max(flu_pct))
-
-    plt.figure(figsize=(9,4))
-    plt.plot(weeks, hiv_pct, label="HIV: % infected now")
-    plt.plot(weeks, flu_pct, label="Flu: % infected now")
-    plt.xlabel("Days")
-    plt.ylabel("% of population")
-    plt.title("Current infections (% of 2,400)")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig("prevalence_percent.png", dpi=200)
     plt.show()

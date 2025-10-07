@@ -11,11 +11,11 @@ def find_eligible_partners(G, person_id,max_degree=10, max_age_gap=10):
     person_gender = G.nodes[person_id]['gender']
     eligible = []
     for candidate_id, attrs in G.nodes(data=True):
-        if candidate_id == person_id:
+        if candidate_id == person_id: #not self
             continue
-        if attrs['gender'] == person_gender:
+        if attrs['gender'] == person_gender: #heterosexual
             continue
-        if abs(attrs['age'] - person_age) > max_age_gap:
+        if abs(attrs['age'] - person_age) > max_age_gap or attrs['age'] < 16: 
             continue
         # allow multiple partners; cap if max_degree is set
         if max_degree is not None and G.degree(candidate_id) >= max_degree:
@@ -54,12 +54,12 @@ def start_relationship(G, formation_probability, homophily, current_step, min_ag
             G.add_edge(person_id, chosen, formed_step=current_step)
             G.graph['num_relationships_formed'] += 1
            
-def breakup(G, breakup_probability=0.01):
+def breakup(G, breakup_probability):
     """
     Each existing partnership has a chance to dissolve
     at each time step. 
 
-    - currently 1% of breaking up
+    
     """
     for person1, person2 in list(G.edges()):
         if random.random() < breakup_probability:

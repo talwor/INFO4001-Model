@@ -12,6 +12,7 @@ def transmit_hiv(
 
     readability; person1 = person1, person2 = person2 whom they have a relationship with eachother
     """
+    new_today=0
     for person1, person2, attrs in G.edges(data=True):
         for a, b in ((person1, person2), (person2, person1)):
             if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'F' 
@@ -29,6 +30,8 @@ def transmit_hiv(
                     G.nodes[b]["hiv_ever_infected"] = True
                     G.nodes[b]['hiv_infection_step'] = current_step
                     G.graph['hiv_total_infections'] += 1
+                    new_today += 1 #new infections today
+    return new_today
 
 
 

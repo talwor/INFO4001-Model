@@ -63,8 +63,8 @@ def generate_population(population_size, age_distribution, male_fraction, indige
     for seed in flu_seed_ids:
         G.nodes[seed]['flu_infection_status'] = 'I'             # start infectious
         G.nodes[seed]['flu_infection_step'] = 0
-        G.nodes[seed]['flu_ever_infected'] = True        # <-- add
-        G.graph['flu_total_infections'] += 1             # <-- add
+        G.nodes[seed]['flu_ever_infected'] = True       
+        G.graph['flu_total_infections'] += 1             
     return G
 
 
