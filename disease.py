@@ -168,3 +168,4 @@ def progress_flu(
                 G.nodes[person]['flu_infection_step'] = 0
                 G.nodes[person]['flu_became_infectious_step'] = 0
                 G.nodes[person]['flu_recovered_step'] = current_step
+

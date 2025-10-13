@@ -11,3 +11,7 @@ pip install networkx
 
 
 TO BE UPDATED.
+
+
+python control_tests.py --mode hiv_only --days 730 --seed 42
+python control_tests.py --mode flu_only --days 730 --seed 42
