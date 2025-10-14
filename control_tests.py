@@ -10,23 +10,7 @@ import relationship_functions as relationship
 import disease
 
 
-
-"""
-HIV only, 2 years (730 days)
-python control_tests.py --mode hiv_only --days 730 --seed 42
-
-Flu only
-python control_tests.py --mode flu_only --days 730
-
-Both (baseline you’ve been using)
-python control_tests.py --mode both --days 730
-
-"""
-# ----------------------------
-# Utilities to (re)initialise
-# ----------------------------
 def reset_flu(G):
-    """Clear all flu state from the graph and counters so we can run an HIV-only scenario."""
     for n, d in G.nodes(data=True):
         d['flu_infection_status'] = 'S'
         d['flu_infection_step'] = 0
@@ -38,7 +22,6 @@ def reset_flu(G):
 
 
 def reset_hiv(G):
-    """Clear all HIV state from the graph and counters so we can run a Flu-only scenario."""
     for n, d in G.nodes(data=True):
         d['hiv_infection_status'] = 'S'
         d['hiv_infection_step'] = 0
@@ -48,19 +31,20 @@ def reset_hiv(G):
 
 
 def seed_only_hiv(G, num_seeds=20, min_age=18):
-    """Seed HIV in adults only."""
     adult_nodes = [n for n, a in G.nodes(data=True) if a.get('age', 0) >= min_age]
+    if not adult_nodes:
+        return
     seeds = random.sample(adult_nodes, min(num_seeds, len(adult_nodes)))
     for s in seeds:
         G.nodes[s]['hiv_infection_status'] = 'I'
         G.nodes[s]['hiv_infection_step'] = 0
         G.nodes[s]['hiv_ever_infected'] = True
-    # counter not incremented on seeding by design; track infections during runtime
 
 
 def seed_only_flu(G, num_seeds=20):
-    """Seed flu (can be any ages)."""
     nodes = list(G.nodes)
+    if not nodes:
+        return
     seeds = random.sample(nodes, min(num_seeds, len(nodes)))
     for s in seeds:
         G.nodes[s]['flu_infection_status'] = 'I'
@@ -70,35 +54,21 @@ def seed_only_flu(G, num_seeds=20):
 
 
 def prepare_population(population_size, age_distribution, male_fraction, indigenous_fraction, mode, hiv_seeds=20, flu_seeds=20):
-    """Create a population and ensure it matches the requested experimental control mode."""
     G = pop.generate_population(population_size, age_distribution, male_fraction, indigenous_fraction)
-
-    # Your generate_population may auto-seed; normalise to the requested mode
     if mode == 'hiv_only':
-        reset_flu(G)
-        reset_hiv(G)
-        seed_only_hiv(G, hiv_seeds)
+        reset_flu(G); reset_hiv(G); seed_only_hiv(G, hiv_seeds)
     elif mode == 'flu_only':
-        reset_hiv(G)
-        reset_flu(G)
-        seed_only_flu(G, flu_seeds)
+        reset_hiv(G); reset_flu(G); seed_only_flu(G, flu_seeds)
     elif mode == 'both':
-        # ensure both present; rebaseline so counts start from seeds below
-        reset_hiv(G)
-        reset_flu(G)
-        seed_only_hiv(G, hiv_seeds)
-        seed_only_flu(G, flu_seeds)
+        reset_hiv(G); reset_flu(G); seed_only_hiv(G, hiv_seeds); seed_only_flu(G, flu_seeds)
     else:
         raise ValueError("mode must be one of: hiv_only, flu_only, both")
     return G
 
 
-# ----------------------------
-# One-run simulation
-# ----------------------------
 def run_simulation(mode='both',
                    total_days=730,
-                   relationship_formation_prob=0.1429,  # ~once/week opportunity
+                   relationship_formation_prob=0.1429,
                    homophily=0.7,
                    min_age=16,
                    breakup_probability=0.02,
@@ -112,53 +82,40 @@ def run_simulation(mode='both',
     random.seed(rng_seed)
     np.random.seed(rng_seed)
 
-    # ABS/Bourke defaults (from your main.py)
+    # Bourke defaults
     population_size = 2340
     age_distribution = [
-        (0, 4,   178/population_size),
-        (5, 9,   172/population_size),
-        (10, 14, 165/population_size),
-        (15, 19, 134/population_size),
-        (20, 24, 134/population_size),
-        (25, 29, 150/population_size),
-        (30, 34, 168/population_size),
-        (35, 39, 148/population_size),
-        (40, 44, 122/population_size),
-        (45, 49, 128/population_size),
-        (50, 54, 173/population_size),
-        (55, 59, 164/population_size),
-        (60, 64, 158/population_size),
-        (65, 69, 102/population_size),
-        (70, 74, 110/population_size),
-        (75, 79,  67/population_size),
-        (80, 84,  46/population_size),
-        (85, 120, 34/population_size),
+        (0, 4,   178/population_size), (5, 9,   172/population_size),
+        (10, 14, 165/population_size), (15, 19, 134/population_size),
+        (20, 24, 134/population_size), (25, 29, 150/population_size),
+        (30, 34, 168/population_size), (35, 39, 148/population_size),
+        (40, 44, 122/population_size), (45, 49, 128/population_size),
+        (50, 54, 173/population_size), (55, 59, 164/population_size),
+        (60, 64, 158/population_size), (65, 69, 102/population_size),
+        (70, 74, 110/population_size), (75, 79,  67/population_size),
+        (80, 84,  46/population_size), (85, 120, 34/population_size),
     ]
     male_fraction = 1164 / population_size
     indigenous_fraction = 708 / population_size
 
     G = prepare_population(population_size, age_distribution, male_fraction, indigenous_fraction, mode)
 
-    # tracking
     infected_hiv_counts = [sum(1 for _, a in G.nodes(data=True) if a.get("hiv_infection_status") == "I")]
     infected_flu_counts = [sum(1 for _, a in G.nodes(data=True) if a.get("flu_infection_status") == "I")]
     new_hiv_cases_per_day = []
     new_flu_cases_per_day = []
 
-    # simulate
     for day in range(total_days):
-        # Progress flu states regardless of mode; in hiv_only there are no flu infections so it's a no-op
         if mode in ('both', 'flu_only'):
             disease.progress_flu(G, day, incubation_period=4, infectious_period=7)
 
-        # Relationship dynamics
         relationship.start_relationship(G, relationship_formation_prob, homophily, day, min_age, None)
-        # Transmissions
+
         if mode in ('both', 'flu_only'):
             flu_new_today = disease.transmit_flu(
                 G, day,
                 edge_beta=flu_edge_beta,
-                hiv_multiplier=flu_hiv_multiplier if mode == 'both' else 1.0,  # disable HIV effect in flu-only
+                hiv_multiplier=flu_hiv_multiplier if mode == 'both' else 1.0,
                 community_contacts=flu_comm_contacts,
                 community_beta=flu_comm_beta
             )
@@ -174,20 +131,15 @@ def run_simulation(mode='both',
             new_hiv_cases_per_day.append(hiv_new_today)
 
         relationship.breakup(G, breakup_probability=breakup_probability)
-        # HIV recovery / long-term status
         pop.apply_recovery(G, day)
 
-        # Prevalence counts
         infected_hiv_counts.append(sum(1 for _, a in G.nodes(data=True) if a.get("hiv_infection_status") == "I"))
         infected_flu_counts.append(sum(1 for _, a in G.nodes(data=True) if a.get("flu_infection_status") == "I"))
 
-    # Save a snapshot and degree
-    deg = dict(G.degree())
-    nx.set_node_attributes(G, deg, "degree_now")
+    deg = dict(G.degree()); nx.set_node_attributes(G, deg, "degree_now")
     nx.write_graphml(G, f"bourke_{mode}_final_{total_days}d.graphml")
 
-    # Package outputs
-    outputs = {
+    return {
         "G": G,
         "infected_hiv_counts": infected_hiv_counts,
         "infected_flu_counts": infected_flu_counts,
@@ -196,106 +148,176 @@ def run_simulation(mode='both',
         "total_days": total_days,
         "population_size": G.number_of_nodes()
     }
-    return outputs
+
+
+def _series_to_array(series_list, expected_len):
+    arr = []
+    for s in series_list:
+        if len(s) < expected_len:
+            s = s + [s[-1] if s else 0]*(expected_len-len(s))
+        elif len(s) > expected_len:
+            s = s[:expected_len]
+        arr.append(s)
+    return np.asarray(arr, dtype=float)
+
+
+def aggregate_runs(all_results, key, total_days, popN):
+    if not all_results:
+        return None
+    series = [r[key] for r in all_results]
+    expected_len = total_days + 1 if "counts" in key else total_days
+    arr = _series_to_array(series, expected_len)
+    mean = np.nanmean(arr, axis=0)
+    low = np.nanpercentile(arr, 2.5, axis=0)
+    high = np.nanpercentile(arr, 97.5, axis=0)
+    return mean, low, high
+
+
+def plot_with_ci(x, mean, low, high, title, ylabel):
+    plt.figure(figsize=(9,4))
+    plt.plot(x, mean, linestyle='-')
+    plt.fill_between(x, low, high, alpha=0.2)
+    plt.xlabel("Day"); plt.ylabel(ylabel); plt.title(title)
+    plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
+
+
+def save_csv_series(prefix, x, mean, low, high, units):
+    import csv
+    fn = f"{prefix}.csv"
+    with open(fn, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["day", f"mean_{units}", f"ci2.5_{units}", f"ci97.5_{units}"])
+        for xi, m, l, h in zip(x, mean, low, high):
+            w.writerow([xi, m, l, h])
+    return fn
+
+
+def run_batch(mode, seeds, total_days=730, rng_seed=None):
+    all_results = [run_simulation(mode=mode, total_days=total_days, rng_seed=s) for s in seeds]
+    popN = all_results[0]["population_size"] if all_results else 0
+
+    # Prevalence & incidence aggregation
+    hiv_prev = aggregate_runs(all_results, "infected_hiv_counts", total_days, popN)
+    flu_prev = aggregate_runs(all_results, "infected_flu_counts", total_days, popN)
+    hiv_inc  = aggregate_runs(all_results, "new_hiv_cases_per_day", total_days, popN)
+    flu_inc  = aggregate_runs(all_results, "new_flu_cases_per_day", total_days, popN)
+
+    # Cumulative & per-1,000
+    hiv_cum_series, flu_cum_series, hiv_cum_1k_series, flu_cum_1k_series = [], [], [], []
+    for r in all_results:
+        hiv_cum = np.cumsum(r["new_hiv_cases_per_day"]) if r["new_hiv_cases_per_day"] else np.zeros(total_days)
+        flu_cum = np.cumsum(r["new_flu_cases_per_day"]) if r["new_flu_cases_per_day"] else np.zeros(total_days)
+        hiv_cum_series.append(hiv_cum.tolist()); flu_cum_series.append(flu_cum.tolist())
+        hiv_cum_1k_series.append((hiv_cum / popN * 1000.0).tolist())
+        flu_cum_1k_series.append((flu_cum / popN * 1000.0).tolist())
+
+    hiv_cum   = aggregate_runs([{"cum": s} for s in hiv_cum_series], "cum", total_days, popN)
+    flu_cum   = aggregate_runs([{"cum": s} for s in flu_cum_series], "cum", total_days, popN)
+    hiv_cum_1k= aggregate_runs([{"cum": s} for s in hiv_cum_1k_series], "cum", total_days, popN)
+    flu_cum_1k= aggregate_runs([{"cum": s} for s in flu_cum_1k_series], "cum", total_days, popN)
+
+    # Plots
+    days_prev = list(range(0, total_days + 1))
+    days_inc  = list(range(1, total_days + 1))
+    if hiv_prev and np.any(hiv_prev[0]):
+        plot_with_ci(days_prev, *hiv_prev, title=f"HIV Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="HIV-infected")
+    if flu_prev and np.any(flu_prev[0]):
+        plot_with_ci(days_prev, *flu_prev, title=f"Influenza Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Flu-infected")
+    if hiv_inc and np.any(hiv_inc[0]):
+        plot_with_ci(days_inc, *hiv_inc, title=f"HIV Daily Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="New HIV cases")
+    if flu_inc and np.any(flu_inc[0]):
+        plot_with_ci(days_inc, *flu_inc, title=f"Influenza Daily Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="New flu cases")
+    if hiv_cum and np.any(hiv_cum[0]):
+        plot_with_ci(days_inc, *hiv_cum, title=f"HIV Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="People ever infected")
+    if flu_cum and np.any(flu_cum[0]):
+        plot_with_ci(days_inc, *flu_cum, title=f"Influenza Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="People ever infected")
+    if hiv_cum_1k and np.any(hiv_cum_1k[0]):
+        plot_with_ci(days_inc, *hiv_cum_1k, title=f"HIV Cumulative Incidence per 1,000 — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Per 1,000")
+    if flu_cum_1k and np.any(flu_cum_1k[0]):
+        plot_with_ci(days_inc, *flu_cum_1k, title=f"Influenza Cumulative Incidence per 1,000 — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Per 1,000")
+
+    # CSV exports for figures
+    saved = []
+    if hiv_prev:   saved.append(save_csv_series(f"batch_{mode}_hiv_prevalence", days_prev, *hiv_prev, units="count"))
+    if flu_prev:   saved.append(save_csv_series(f"batch_{mode}_flu_prevalence", days_prev, *flu_prev, units="count"))
+    if hiv_inc:    saved.append(save_csv_series(f"batch_{mode}_hiv_incidence", days_inc, *hiv_inc, units="count"))
+    if flu_inc:    saved.append(save_csv_series(f"batch_{mode}_flu_incidence", days_inc, *flu_inc, units="count"))
+    if hiv_cum:    saved.append(save_csv_series(f"batch_{mode}_hiv_cumulative", days_inc, *hiv_cum, units="count"))
+    if flu_cum:    saved.append(save_csv_series(f"batch_{mode}_flu_cumulative", days_inc, *flu_cum, units="count"))
+    if hiv_cum_1k: saved.append(save_csv_series(f"batch_{mode}_hiv_cumulative_per1000", days_inc, *hiv_cum_1k, units="per1000"))
+    if flu_cum_1k: saved.append(save_csv_series(f"batch_{mode}_flu_cumulative_per1000", days_inc, *flu_cum_1k, units="per1000"))
+    return {"csv_files": saved, "n_runs": len(seeds), "population_size": popN}
 
 
 def plot_results(mode, results):
     days = list(range(0, results["total_days"] + 1))
     popN = results["population_size"]
-
-    # HIV prevalence (if applicable)
     if results["infected_hiv_counts"] and any(results["infected_hiv_counts"]):
         plt.figure(figsize=(8,4))
         plt.plot(days, results["infected_hiv_counts"], linestyle='-')
-        plt.xlabel("Day")
-        plt.ylabel("Number of HIV-infected individuals")
-        plt.title(f"HIV Prevalence over Time — {mode}")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
-
+        plt.xlabel("Day"); plt.ylabel("Number of HIV-infected individuals")
+        plt.title(f"HIV Prevalence over Time — {mode}"); plt.grid(True); plt.tight_layout(); plt.show()
         if results["new_hiv_cases_per_day"]:
             d = list(range(1, results["total_days"] + 1))
             cum = np.cumsum(results["new_hiv_cases_per_day"])
             per_1000 = (cum / popN) * 1000.0
+            plt.figure(figsize=(9,4)); plt.plot(d, cum, linestyle='-'); plt.xlabel("Day"); plt.ylabel("People ever infected")
+            plt.title(f"Cumulative HIV incidence — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
+            plt.figure(figsize=(9,4)); plt.plot(d, per_1000, linestyle='-'); plt.xlabel("Day"); plt.ylabel("Cumulative incidence per 1,000")
+            plt.title(f"Cumulative HIV incidence per 1,000 — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
 
-            plt.figure(figsize=(9,4))
-            plt.plot(d, cum, linestyle='-')
-            plt.xlabel("Day")
-            plt.ylabel("People ever infected")
-            plt.title(f"Cumulative HIV incidence — {mode}")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(9,4))
-            plt.plot(d, per_1000, linestyle='-')
-            plt.xlabel("Day")
-            plt.ylabel("Cumulative incidence per 1,000")
-            plt.title(f"Cumulative HIV incidence per 1,000 — {mode}")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.show()
-
-    # Flu prevalence (if applicable)
     if results["infected_flu_counts"] and any(results["infected_flu_counts"]):
         plt.figure(figsize=(8,4))
         plt.plot(days, results["infected_flu_counts"], linestyle='-')
-        plt.xlabel("Day")
-        plt.ylabel("Number of Flu-infected individuals")
-        plt.title(f"Influenza Prevalence over Time — {mode}")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.show()
-
+        plt.xlabel("Day"); plt.ylabel("Number of Flu-infected individuals")
+        plt.title(f"Influenza Prevalence over Time — {mode}"); plt.grid(True); plt.tight_layout(); plt.show()
         if results["new_flu_cases_per_day"]:
             d = list(range(1, results["total_days"] + 1))
             cum = np.cumsum(results["new_flu_cases_per_day"])
             per_1000 = (cum / popN) * 1000.0
-
-            plt.figure(figsize=(9,4))
-            plt.plot(d, results["new_flu_cases_per_day"], linestyle='-')
-            plt.xlabel("Day")
-            plt.ylabel("New flu cases (incidence)")
-            plt.title(f"Daily influenza incidence — {mode}")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(9,4))
-            plt.plot(d, cum, linestyle='-')
-            plt.xlabel("Day")
-            plt.ylabel("People ever infected")
-            plt.title(f"Cumulative influenza incidence — {mode}")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(9,4))
-            plt.plot(d, per_1000, linestyle='-')
-            plt.xlabel("Day")
-            plt.ylabel("Cumulative incidence per 1,000")
-            plt.title(f"Cumulative influenza incidence per 1,000 — {mode}")
-            plt.grid(True, alpha=0.3)
-            plt.tight_layout()
-            plt.show()
+            plt.figure(figsize=(9,4)); plt.plot(d, results["new_flu_cases_per_day"], linestyle='-')
+            plt.xlabel("Day"); plt.ylabel("New flu cases (incidence)"); plt.title(f"Daily influenza incidence — {mode}")
+            plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
+            plt.figure(figsize=(9,4)); plt.plot(d, cum, linestyle='-'); plt.xlabel("Day"); plt.ylabel("People ever infected")
+            plt.title(f"Cumulative influenza incidence — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
+            plt.figure(figsize=(9,4)); plt.plot(d, per_1000, linestyle='-'); plt.xlabel("Day"); plt.ylabel("Cumulative incidence per 1,000")
+            plt.title(f"Cumulative influenza incidence per 1,000 — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run Bourke simulation in control modes: HIV-only, Flu-only, or Both.")
+    parser = argparse.ArgumentParser(description="Run Bourke simulation in control modes or batch mode.")
     parser.add_argument("--mode", choices=["hiv_only", "flu_only", "both"], default="both")
     parser.add_argument("--days", type=int, default=730)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seed", type=int, default=42, help="Single-run seed (ignored in --batch if --seeds provided)")
+    parser.add_argument("--batch", action="store_true", help="Run batch (multi-seed) mode")
+    parser.add_argument("--seeds", type=str, default="", help="Comma list or range like 0-99 for batch mode")
     args = parser.parse_args()
 
-    results = run_simulation(mode=args.mode, total_days=args.days, rng_seed=args.seed)
-    print(f"Mode: {args.mode}")
-    print(f"Days: {args.days}")
-    print(f"Nodes: {results['population_size']}")
-    print(f"HIV total infections: {results['G'].graph.get('hiv_total_infections', 0)}")
-    print(f"Flu total infections: {results['G'].graph.get('flu_total_infections', 0)}")
-    print("Saving GraphML to:", f"bourke_{args.mode}_final_{args.days}d.graphml")
-    plot_results(args.mode, results)
+    if args.batch:
+        if args.seeds:
+            if "-" in args.seeds:
+                a, b = args.seeds.split("-", 1)
+                seeds = list(range(int(a), int(b) + 1))
+            else:
+                seeds = [int(s.strip()) for s in args.seeds.split(",") if s.strip()]
+        else:
+            seeds = list(range(0, 30))  # default n=30
+
+        summary = run_batch(args.mode, seeds, total_days=args.days)
+        print(f"Batch completed: mode={args.mode}, runs={summary['n_runs']}, population={summary['population_size']}")
+        if summary["csv_files"]:
+            print("CSV outputs:")
+            for p in summary["csv_files"]:
+                print(" -", p)
+    else:
+        results = run_simulation(mode=args.mode, total_days=args.days, rng_seed=args.seed)
+        print(f"Mode: {args.mode}")
+        print(f"Days: {args.days}")
+        print(f"Nodes: {results['population_size']}")
+        print(f"HIV total infections: {results['G'].graph.get('hiv_total_infections', 0)}")
+        print(f"Flu total infections: {results['G'].graph.get('flu_total_infections', 0)}")
+        print("Saving GraphML to:", f"bourke_{args.mode}_final_{args.days}d.graphml")
+        plot_results(args.mode, results)
 
 
 if __name__ == "__main__":

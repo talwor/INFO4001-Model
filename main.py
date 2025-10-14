@@ -73,6 +73,7 @@ if __name__ == "__main__":
     # 3.simulate network growth over time
     total_steps = 730  # 730 days, 104 weeks, 2 years #at 365 for 1 year for nice graph
     for step in range(total_steps):
+        print(step)
         disease.progress_flu(
             population,
             step,

@@ -1,36 +1,55 @@
 import random
 
-def transmit_hiv(
-    G, 
-    transmission_probability_ftm,
-    transmission_probability_mtf, 
-    current_step
-    ): 
-    """
-    For every partnership formed at `current_step`,
-    attempt transmission from infected → susceptible.
+# def transmit_hiv(
+#     G, 
+#     transmission_probability_ftm,
+#     transmission_probability_mtf, 
+#     current_step
+#     ): 
+#     """
+#     For every partnership formed at `current_step`,
+#     attempt transmission from infected → susceptible.
 
-    readability; person1 = person1, person2 = person2 whom they have a relationship with eachother
-    """
-    new_today=0
+#     readability; person1 = person1, person2 = person2 whom they have a relationship with eachother
+#     """
+#     new_today=0
+#     for person1, person2, attrs in G.edges(data=True):
+#         for a, b in ((person1, person2), (person2, person1)):
+#             if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'F' 
+#                 and G.nodes[b]['hiv_infection_status'] == 'S'):
+#                 if random.random() < transmission_probability_ftm:
+#                     G.nodes[b]['hiv_infection_status'] = 'I'
+#                     G.nodes[b]["hiv_ever_infected"] = True
+#                     G.nodes[b]['hiv_infection_step'] = current_step
+#                     G.graph['hiv_total_infections'] += 1
+
+#             if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'M' 
+#                 and G.nodes[b]['hiv_infection_status'] == 'S'):
+#                 if random.random() < transmission_probability_mtf:
+#                     G.nodes[b]['hiv_infection_status'] = 'I'
+#                     G.nodes[b]["hiv_ever_infected"] = True
+#                     G.nodes[b]['hiv_infection_step'] = current_step
+#                     G.graph['hiv_total_infections'] += 1
+#                     new_today += 1 #new infections today
+#     return new_today
+
+def transmit_hiv(G, transmission_probability_ftm, transmission_probability_mtf, current_step):
+    new_today = 0
     for person1, person2, attrs in G.edges(data=True):
         for a, b in ((person1, person2), (person2, person1)):
-            if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'F' 
-                and G.nodes[b]['hiv_infection_status'] == 'S'):
-                if random.random() < transmission_probability_ftm:
-                    G.nodes[b]['hiv_infection_status'] = 'I'
-                    G.nodes[b]["hiv_ever_infected"] = True
-                    G.nodes[b]['hiv_infection_step'] = current_step
-                    G.graph['hiv_total_infections'] += 1
+            if G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[b]['hiv_infection_status'] == 'S':
+                # base transmission prob
+                p = (transmission_probability_ftm if G.nodes[a]['gender'] == 'F' else transmission_probability_mtf)
 
-            if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'M' 
-                and G.nodes[b]['hiv_infection_status'] == 'S'):
-                if random.random() < transmission_probability_mtf:
+                # --- NEW: increase risk if either has influenza ---
+                if (G.nodes[a]['flu_infection_status'] == 'I' or G.nodes[b]['flu_infection_status'] == 'I'):
+                    p *= 2.0  # adjust multiplier as desired
+
+                if random.random() < p:
                     G.nodes[b]['hiv_infection_status'] = 'I'
-                    G.nodes[b]["hiv_ever_infected"] = True
                     G.nodes[b]['hiv_infection_step'] = current_step
-                    G.graph['hiv_total_infections'] += 1
-                    new_today += 1 #new infections today
+                    G.nodes[b]['hiv_ever_infected'] = True
+                    new_today +=1
     return new_today
 
 
