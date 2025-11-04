@@ -1,38 +1,5 @@
 import random
 
-# def transmit_hiv(
-#     G, 
-#     transmission_probability_ftm,
-#     transmission_probability_mtf, 
-#     current_step
-#     ): 
-#     """
-#     For every partnership formed at `current_step`,
-#     attempt transmission from infected → susceptible.
-
-#     readability; person1 = person1, person2 = person2 whom they have a relationship with eachother
-#     """
-#     new_today=0
-#     for person1, person2, attrs in G.edges(data=True):
-#         for a, b in ((person1, person2), (person2, person1)):
-#             if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'F' 
-#                 and G.nodes[b]['hiv_infection_status'] == 'S'):
-#                 if random.random() < transmission_probability_ftm:
-#                     G.nodes[b]['hiv_infection_status'] = 'I'
-#                     G.nodes[b]["hiv_ever_infected"] = True
-#                     G.nodes[b]['hiv_infection_step'] = current_step
-#                     G.graph['hiv_total_infections'] += 1
-
-#             if (G.nodes[a]['hiv_infection_status'] == 'I' and G.nodes[a]['gender'] == 'M' 
-#                 and G.nodes[b]['hiv_infection_status'] == 'S'):
-#                 if random.random() < transmission_probability_mtf:
-#                     G.nodes[b]['hiv_infection_status'] = 'I'
-#                     G.nodes[b]["hiv_ever_infected"] = True
-#                     G.nodes[b]['hiv_infection_step'] = current_step
-#                     G.graph['hiv_total_infections'] += 1
-#                     new_today += 1 #new infections today
-#     return new_today
-
 def transmit_hiv(G, transmission_probability_ftm, transmission_probability_mtf, current_step):
     new_today = 0
     for person1, person2, attrs in G.edges(data=True):
@@ -41,9 +8,9 @@ def transmit_hiv(G, transmission_probability_ftm, transmission_probability_mtf, 
                 # base transmission prob
                 p = (transmission_probability_ftm if G.nodes[a]['gender'] == 'F' else transmission_probability_mtf)
 
-                # --- NEW: increase risk if either has influenza ---
+                #increase risk if either has influenza
                 if (G.nodes[a]['flu_infection_status'] == 'I' or G.nodes[b]['flu_infection_status'] == 'I'):
-                    p *= 2.0  # adjust multiplier as desired
+                    p *= 2.0  #2 times the probability
 
                 if random.random() < p:
                     G.nodes[b]['hiv_infection_status'] = 'I'
@@ -125,17 +92,17 @@ def transmit_flu(
             if not possible_contacts:
                 continue  # no one left to infect
 
-            # Number of casual encounters this infectious person will have this step
+            #number of casual encounters this infectious person will have this step
             num_contacts = min(community_contacts, len(possible_contacts))
             
-            # Randomly pick that many contacts from the pool
+            #randomly pick that many contacts from the pool
             chosen_contacts = random.sample(possible_contacts, k=num_contacts)
 
             for contact in chosen_contacts:
-                # Adjust transmission probability if contact is HIV-positive
+                #adjust transmission probability if contact is HIV-positive
                 transmission_prob = community_beta * hiv_multiplier_for(contact)
                 
-                # Infect with probability 'transmission_prob'
+                #infect with probability 'transmission_prob'
                 if random.random() < transmission_prob:
                     newly_infected.add(contact)
                                 
@@ -173,17 +140,17 @@ def progress_flu(
             if t_I is not None and (current_step - t_I) >= infectious_period:
                 G.nodes[person]['flu_infection_status'] = 'R'
                 G.nodes[person]['flu_recovered_step']   = current_step
-                # heterogeneous waning (mean 180d, sd 30d; clamp to >=30)
+                #heterogeneous waning (mean 180d, sd 30d; clamp to >=30)
                 w = max(30, int(random.gauss(immunity_days, 30)))
                 G.nodes[person]['flu_waning_days'] = w
 
         
-        # Recovered -> Susceptible (waning immunity)
+        #changing from Recovered -> Susceptible 
         elif status == 'R':
             t_R = attrs.get('flu_recovered_step')
             if t_R is not None and current_step - t_R >= immunity_days:
                 G.nodes[person]['flu_infection_status'] = 'S'
-                # clear timestamps to allow reinfection
+                #clear timestamps to allow reinfection
                 G.nodes[person]['flu_infection_step'] = 0
                 G.nodes[person]['flu_became_infectious_step'] = 0
                 G.nodes[person]['flu_recovered_step'] = current_step

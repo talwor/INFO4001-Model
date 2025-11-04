@@ -82,7 +82,7 @@ def run_simulation(mode='both',
     random.seed(rng_seed)
     np.random.seed(rng_seed)
 
-    # Bourke defaults
+    #bourke population
     population_size = 2340
     age_distribution = [
         (0, 4,   178/population_size), (5, 9,   172/population_size),
@@ -196,13 +196,13 @@ def run_batch(mode, seeds, total_days=730, rng_seed=None):
     all_results = [run_simulation(mode=mode, total_days=total_days, rng_seed=s) for s in seeds]
     popN = all_results[0]["population_size"] if all_results else 0
 
-    # Prevalence & incidence aggregation
+    #prevalence & incidence aggregation
     hiv_prev = aggregate_runs(all_results, "infected_hiv_counts", total_days, popN)
     flu_prev = aggregate_runs(all_results, "infected_flu_counts", total_days, popN)
     hiv_inc  = aggregate_runs(all_results, "new_hiv_cases_per_day", total_days, popN)
     flu_inc  = aggregate_runs(all_results, "new_flu_cases_per_day", total_days, popN)
 
-    # Cumulative & per-1,000
+    #cumulative & per-1,000 // not really used
     hiv_cum_series, flu_cum_series, hiv_cum_1k_series, flu_cum_1k_series = [], [], [], []
     for r in all_results:
         hiv_cum = np.cumsum(r["new_hiv_cases_per_day"]) if r["new_hiv_cases_per_day"] else np.zeros(total_days)
@@ -216,7 +216,7 @@ def run_batch(mode, seeds, total_days=730, rng_seed=None):
     hiv_cum_1k= aggregate_runs([{"cum": s} for s in hiv_cum_1k_series], "cum", total_days, popN)
     flu_cum_1k= aggregate_runs([{"cum": s} for s in flu_cum_1k_series], "cum", total_days, popN)
 
-    # Plots
+    #plots
     days_prev = list(range(0, total_days + 1))
     days_inc  = list(range(1, total_days + 1))
     if hiv_prev and np.any(hiv_prev[0]):
@@ -236,7 +236,7 @@ def run_batch(mode, seeds, total_days=730, rng_seed=None):
     if flu_cum_1k and np.any(flu_cum_1k[0]):
         plot_with_ci(days_inc, *flu_cum_1k, title=f"Influenza Cumulative Incidence per 1,000 — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Per 1,000")
 
-    # CSV exports for figures
+    #CSV exports for figures
     saved = []
     if hiv_prev:   saved.append(save_csv_series(f"batch_{mode}_hiv_prevalence", days_prev, *hiv_prev, units="count"))
     if flu_prev:   saved.append(save_csv_series(f"batch_{mode}_flu_prevalence", days_prev, *flu_prev, units="count"))
