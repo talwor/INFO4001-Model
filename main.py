@@ -2,7 +2,7 @@ import numpy as np
 import population_functions as pop
 import relationship_functions as relationship
 import networkx as nx
-import disease
+import disease_functions as disease
 import random
 import matplotlib.pyplot as plt
 

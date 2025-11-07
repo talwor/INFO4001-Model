@@ -3,18 +3,6 @@ import networkx as nx
 
 #functions to generate population
 
-# def sample_from_distribution(distribution):
-#     """
-#     distribution: list of (value, probability) pairs summing to 1.
-#     Returns one value sampled according to its probability.
-#     """
-#     r = random.random()
-#     cumulative = 0.0
-#     for value, prob in distribution:
-#         cumulative += prob
-#         if r < cumulative:
-#             return value
-#     return distribution[-1][0]
 
 def generate_population(population_size, age_distribution, male_fraction, indigenous_fraction):
     """

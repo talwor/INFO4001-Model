@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import population_functions as pop
 import relationship_functions as relationship
-import disease
+import disease_functions
 
 
 def reset_flu(G):
@@ -107,12 +107,12 @@ def run_simulation(mode='both',
 
     for day in range(total_days):
         if mode in ('both', 'flu_only'):
-            disease.progress_flu(G, day, incubation_period=4, infectious_period=7)
+            disease_functions.progress_flu(G, day, incubation_period=4, infectious_period=7)
 
         relationship.start_relationship(G, relationship_formation_prob, homophily, day, min_age, None)
 
         if mode in ('both', 'flu_only'):
-            flu_new_today = disease.transmit_flu(
+            flu_new_today = disease_functions.transmit_flu(
                 G, day,
                 edge_beta=flu_edge_beta,
                 hiv_multiplier=flu_hiv_multiplier if mode == 'both' else 1.0,
@@ -122,7 +122,7 @@ def run_simulation(mode='both',
             new_flu_cases_per_day.append(flu_new_today)
 
         if mode in ('both', 'hiv_only'):
-            hiv_new_today = disease.transmit_hiv(
+            hiv_new_today = disease_functions.transmit_hiv(
                 G,
                 transmission_probability_ftm=hiv_p_ftm,
                 transmission_probability_mtf=hiv_p_mtf,
@@ -220,17 +220,17 @@ def run_batch(mode, seeds, total_days=730, rng_seed=None):
     days_prev = list(range(0, total_days + 1))
     days_inc  = list(range(1, total_days + 1))
     if hiv_prev and np.any(hiv_prev[0]):
-        plot_with_ci(days_prev, *hiv_prev, title=f"HIV Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="HIV-infected")
+        plot_with_ci(days_prev, *hiv_prev, title=f"HIV Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Number of HIV-infected")
     if flu_prev and np.any(flu_prev[0]):
-        plot_with_ci(days_prev, *flu_prev, title=f"Influenza Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Flu-infected")
+        plot_with_ci(days_prev, *flu_prev, title=f"Influenza Prevalence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Number of people Infected with Flu")
     if hiv_inc and np.any(hiv_inc[0]):
-        plot_with_ci(days_inc, *hiv_inc, title=f"HIV Daily Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="New HIV cases")
+        plot_with_ci(days_inc, *hiv_inc, title=f"HIV Daily Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Number of new HIV cases")
     if flu_inc and np.any(flu_inc[0]):
         plot_with_ci(days_inc, *flu_inc, title=f"Influenza Daily Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="New flu cases")
     if hiv_cum and np.any(hiv_cum[0]):
-        plot_with_ci(days_inc, *hiv_cum, title=f"HIV Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="People ever infected")
+        plot_with_ci(days_inc, *hiv_cum, title=f"HIV Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Number of people infected with HIV")
     if flu_cum and np.any(flu_cum[0]):
-        plot_with_ci(days_inc, *flu_cum, title=f"Influenza Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="People ever infected")
+        plot_with_ci(days_inc, *flu_cum, title=f"Influenza Cumulative Incidence — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Number of people infected with Influenza")
     if hiv_cum_1k and np.any(hiv_cum_1k[0]):
         plot_with_ci(days_inc, *hiv_cum_1k, title=f"HIV Cumulative Incidence per 1,000 — mean & 95% CI ({mode}, n={len(seeds)})", ylabel="Per 1,000")
     if flu_cum_1k and np.any(flu_cum_1k[0]):
@@ -276,9 +276,9 @@ def plot_results(mode, results):
             cum = np.cumsum(results["new_flu_cases_per_day"])
             per_1000 = (cum / popN) * 1000.0
             plt.figure(figsize=(9,4)); plt.plot(d, results["new_flu_cases_per_day"], linestyle='-')
-            plt.xlabel("Day"); plt.ylabel("New flu cases (incidence)"); plt.title(f"Daily influenza incidence — {mode}")
+            plt.xlabel("Day"); plt.ylabel("Number of new flu cases (incidence)"); plt.title(f"Daily influenza incidence — {mode}")
             plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
-            plt.figure(figsize=(9,4)); plt.plot(d, cum, linestyle='-'); plt.xlabel("Day"); plt.ylabel("People ever infected")
+            plt.figure(figsize=(9,4)); plt.plot(d, cum, linestyle='-'); plt.xlabel("Day"); plt.ylabel("Number of people infected with HIV")
             plt.title(f"Cumulative influenza incidence — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
             plt.figure(figsize=(9,4)); plt.plot(d, per_1000, linestyle='-'); plt.xlabel("Day"); plt.ylabel("Cumulative incidence per 1,000")
             plt.title(f"Cumulative influenza incidence per 1,000 — {mode}"); plt.grid(True, alpha=0.3); plt.tight_layout(); plt.show()
