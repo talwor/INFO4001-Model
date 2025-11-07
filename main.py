@@ -178,9 +178,7 @@ if __name__ == "__main__":
     print("total flu recovered by the end: " + str(count_flu))
 
     print("===============")
-    # flu_ever_nodes = [n for n, d in population.nodes(data=True)
-    #                 if d.get("flu_ever_infected", False)]
-    # print("Nodes ever infected with flu:", flu_ever_nodes)
+
 
 
 
@@ -192,13 +190,6 @@ if __name__ == "__main__":
 
     deg = dict(population.degree())
     nx.set_node_attributes(population, deg, "degree_now")
-    # print("max degree:", max(deg.values()))
-
-    # hi = [n for n,d in deg.items() if d >= 2]
-    # print("nodes with degree≥2:", len(hi))
-    # for n in hi[:10]:
-    #     print(n, "deg", deg[n], "partners:", list(population.neighbors(n)))
-    # nx.write_graphml(population.subgraph(hi).copy(), "bourke_deg2plus.graphml")
 
 
 
@@ -236,11 +227,11 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
-    # Build incidence & cumulative incidence vectors
+    #build incidence & cumulative incidence vectors
     days = list(range(1, total_steps + 1))
     cum_flu_cases = np.cumsum(new_flu_cases_per_day)
 
-    # Plot daily new cases
+    #plot daily new cases
     plt.figure(figsize=(9,4))
     plt.plot(days, new_flu_cases_per_day, linestyle='-')
     plt.xlabel("Day")
@@ -250,7 +241,7 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
-    # Plot cumulative incidence
+    #plot cumulative incidence
     plt.figure(figsize=(9,4))
     plt.plot(days, cum_flu_cases, label="Flu Cumulative cases (count)")
     plt.xlabel("Day")

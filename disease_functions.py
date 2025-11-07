@@ -26,9 +26,9 @@ def transmit_flu(
     G,
     current_step,
     edge_beta,          # per-step flu transmission prob along a someone in a relationship
-    hiv_multiplier,      # >1 increases risk for HIV+ susceptibles
-    community_contacts,    # casual contacts per infectious person per step (well-mixed)
-    community_beta  # per-contact prob for casual (non-edge) encounters. 5%
+    hiv_multiplier,      # increases risk for HIV+ susceptibles
+    community_contacts,    # casual contacts per infectious person per step 
+    community_beta  # per-contact probability for casual (non-edge) encounters 
     ):     
     """
     Influenza transmission for this time step.
@@ -43,7 +43,8 @@ def transmit_flu(
         G.nodes[i]['flu_infection_step'] = current_step
         G.graph['flu_total_infections'] (counter; created if missing)
     """
-    # --- helpers --------------------------------------------------------------
+    
+
     def is_infectious(node_id):
         # Only 'I' shed flu
         return G.nodes[node_id].get('flu_infection_status', 'S') == 'I'
@@ -55,7 +56,7 @@ def transmit_flu(
         return hiv_multiplier if G.nodes[node_id].get('hiv_infection_status') == 'I' else 1.0
 
     def infect(node_id):
-        G.nodes[node_id]['flu_infection_status'] = 'E'  # enter incubation; your progression will move E->I->R
+        G.nodes[node_id]['flu_infection_status'] = 'E'  #enter incubation; your progression will move E->I->R
         G.nodes[node_id]['flu_infection_step'] = current_step
         G.nodes[node_id]["flu_ever_infected"] = True
 
@@ -64,7 +65,7 @@ def transmit_flu(
     # avoid multiple infections or double-processing, collect infections then apply once
     newly_infected = set()
 
-    # --- 1) Transmission along edges (close/household-like contacts) ----------
+    #1. transmission along edges (close/household-like contacts) 
     for person1, person2, attrs in G.edges(data=True):
         # two directions: person1->person2 and person2->person1
         if is_infectious(person1) and is_susceptible(person2) and person2 not in newly_infected:
@@ -77,20 +78,20 @@ def transmit_flu(
             if random.random() < p:
                 newly_infected.add(person1)
 
-    # --- 2) Community mixing (casual contacts beyond the network edges) -------
+    #2. community mixing (casual contacts beyond the network edges) 
     infectious = [n for n, d in G.nodes(data=True) if is_infectious(n)]
     susceptibles = [n for n, d in G.nodes(data=True) if is_susceptible(n)]
 
-    # If no susceptibles remain, skip
+    #no susceptibles remain-->skip
     if susceptibles:  # only run if there are any susceptibles left
         for infector in infectious:
-            # Build a pool of susceptible contacts (excluding the infector and those already infected this step)
+            #build a pool of susceptible contacts (excluding the infector and those already infected this step)
             possible_contacts = [
                 person for person in susceptibles
                 if person != infector and person not in newly_infected
             ]
             if not possible_contacts:
-                continue  # no one left to infect
+                continue  #no one left to infect
 
             #number of casual encounters this infectious person will have this step
             num_contacts = min(community_contacts, len(possible_contacts))
@@ -108,7 +109,7 @@ def transmit_flu(
                                 
 
 
-    # --- apply infections -----------------------------------------------------
+    #apply infections
     for person in newly_infected:
         infect(person)
     

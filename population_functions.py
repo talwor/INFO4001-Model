@@ -41,7 +41,7 @@ def generate_population(population_size, age_distribution, male_fraction, indige
 
     # e.g. choose 20 random seeds to start infected patient 0, patient 0 only can occur to an infectant over 18
     initial_infected_ids = random.sample(adult_nodes, 20)
-    # mark them in the graph at t=0
+    
     for seed in initial_infected_ids:
         G.nodes[seed]['hiv_infection_status'] = 'I'
         G.nodes[seed]['hiv_infection_step'] = 0 
@@ -49,7 +49,7 @@ def generate_population(population_size, age_distribution, male_fraction, indige
     flu_seed_count = 20   # choose number of flu patient-zeros
     flu_seed_ids = random.sample(list(G.nodes), flu_seed_count)
     for seed in flu_seed_ids:
-        G.nodes[seed]['flu_infection_status'] = 'I'             # start infectious
+        G.nodes[seed]['flu_infection_status'] = 'I'  #start infectious
         G.nodes[seed]['flu_infection_step'] = 0
         G.nodes[seed]['flu_ever_infected'] = True       
         G.graph['flu_total_infections'] += 1             
@@ -70,7 +70,7 @@ def sample_age(brackets):
     return random.randint(lo, hi)
 
 
-# constants
+
 RECOVERY_DAYS = 180  #change to ceil(60/7) if timestep is a WEEK
 
 def apply_recovery(G, current_day, status_key="hiv_infection_status",
